@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Skill Finder"
+  short_description: "Routes repo work to the right docs and skills."
+  default_prompt: "Use $project-skill-finder to route this task to the right repo docs, conventions, and installed skills."
