@@ -1,0 +1,27 @@
+# OS files
+.DS_Store
+
+# Editor and local history
+.Rhistory
+.vscode/*.local.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.coverage
+
+# Node
+node_modules/
+dist/
+coverage/
+
+# App data
+artifacts/
+*.sqlite3
+*.db
+.env
+.env.*
+!.env.example
