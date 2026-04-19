@@ -1,11 +1,18 @@
 import { useMemo, useState } from 'react';
 
-import type { BreakType, ProviderInfo, RunSummary } from '../../lib/types';
+import type { BreakType, ProviderInfo, RunMode, RunSummary } from '../../lib/types';
 
 interface RunCreateFormProps {
   providers: ProviderInfo[];
   creating: boolean;
-  onCreate: (input: { breakType: BreakType; provider: string; model: string; seed: number }) => Promise<void>;
+  onCreate: (input: {
+    mode: RunMode;
+    breakType?: BreakType;
+    provider: string;
+    model: string;
+    seed: number;
+    file?: File | null;
+  }) => Promise<void>;
   latestRun?: RunSummary;
 }
 
@@ -28,8 +35,10 @@ const BREAK_OPTIONS: Array<{ value: BreakType; label: string; description: strin
 ];
 
 export function RunCreateForm({ providers, creating, onCreate, latestRun }: RunCreateFormProps) {
+  const [mode, setMode] = useState<RunMode>('discover');
   const [breakType, setBreakType] = useState<BreakType>('logic_regression');
   const [seed, setSeed] = useState(7);
+  const [file, setFile] = useState<File | null>(null);
   const provider = providers[0];
   const defaultModel = useMemo(() => provider?.models[0] ?? '', [provider]);
 
@@ -38,7 +47,17 @@ export function RunCreateForm({ providers, creating, onCreate, latestRun }: RunC
     if (!provider || !defaultModel) {
       return;
     }
-    await onCreate({ breakType, provider: provider.id, model: defaultModel, seed });
+    if (mode === 'discover' && !file) {
+      return;
+    }
+    await onCreate({
+      mode,
+      breakType: mode === 'inject' ? breakType : undefined,
+      provider: provider.id,
+      model: defaultModel,
+      seed,
+      file,
+    });
   };
 
   return (
@@ -58,6 +77,24 @@ export function RunCreateForm({ providers, creating, onCreate, latestRun }: RunC
       ) : (
         <form className="run-form" onSubmit={handleSubmit}>
           <label>
+            <span>Mode</span>
+            <select value={mode} onChange={(event) => setMode(event.target.value as RunMode)}>
+              <option value="discover">Discover</option>
+              <option value="inject">Inject</option>
+            </select>
+            <small>{mode === 'discover' ? 'Upload a repo zip and look for a real latent failure.' : 'Use the fallback injected-bug demo flow.'}</small>
+          </label>
+
+          {mode === 'discover' ? (
+            <label>
+              <span>Repo Zip</span>
+              <input type="file" accept=".zip,application/zip" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+              <small>{file ? file.name : 'Select a Python service repo zip.'}</small>
+            </label>
+          ) : null}
+
+          {mode === 'inject' ? (
+          <label>
             <span>Break Type</span>
             <select value={breakType} onChange={(event) => setBreakType(event.target.value as BreakType)}>
               {BREAK_OPTIONS.map((option) => (
@@ -68,6 +105,7 @@ export function RunCreateForm({ providers, creating, onCreate, latestRun }: RunC
             </select>
             <small>{BREAK_OPTIONS.find((option) => option.value === breakType)?.description}</small>
           </label>
+          ) : null}
 
           <label>
             <span>Provider</span>
@@ -79,13 +117,15 @@ export function RunCreateForm({ providers, creating, onCreate, latestRun }: RunC
             <input value={defaultModel} disabled />
           </label>
 
-          <label>
-            <span>Seed</span>
-            <input type="number" min={0} value={seed} onChange={(event) => setSeed(Number(event.target.value))} />
-          </label>
+          {mode === 'inject' ? (
+            <label>
+              <span>Seed</span>
+              <input type="number" min={0} value={seed} onChange={(event) => setSeed(Number(event.target.value))} />
+            </label>
+          ) : null}
 
           <button className="primary-button" type="submit" disabled={creating}>
-            {creating ? 'Starting run...' : 'Start run'}
+            {creating ? 'Starting run...' : mode === 'discover' ? 'Upload and discover' : 'Start inject run'}
           </button>
         </form>
       )}

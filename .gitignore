@@ -25,3 +25,15 @@ artifacts/
 .env
 .env.*
 !.env.example
+
+# Local browser/debug artifacts
+.playwright-cli/
+
+# Local demo archives
+output-playwright-probe-target.zip
+
+# Product-generated runtime skill assets
+skill_assets/indexes/
+skill_assets/manifests/
+skill_assets/revisions/
+skill_assets/skills/

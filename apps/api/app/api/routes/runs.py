@@ -8,7 +8,7 @@ from fastapi.responses import StreamingResponse
 
 from app.core.config import get_settings
 from app.dependencies import get_repository
-from app.models.schemas import RunCreateRequest
+from app.models.schemas import RunCreateRequest, RunMode
 from app.providers.registry import ProviderRegistry
 from app.services.orchestrator import HarnessOrchestrator
 
@@ -25,12 +25,20 @@ def list_runs() -> dict[str, object]:
 def create_run(payload: RunCreateRequest, background_tasks: BackgroundTasks) -> dict[str, object]:
     settings = get_settings()
     repository = get_repository()
-    registry = ProviderRegistry(settings)
-    available = {provider.id: provider for provider in registry.list_providers()}
-    if payload.provider not in available:
-        raise HTTPException(status_code=400, detail="Requested provider is not configured")
+    if payload.mode is RunMode.inject and payload.break_type is None:
+        raise HTTPException(status_code=400, detail="Inject mode requires break_type")
+    if payload.mode is RunMode.discover and not payload.codebase_id:
+        raise HTTPException(status_code=400, detail="Discover mode requires codebase_id")
+    if payload.mode is RunMode.replay and not payload.failure_case_id:
+        raise HTTPException(status_code=400, detail="Replay mode requires failure_case_id")
 
-    model = payload.model or settings.openai_model
+    if payload.mode in {RunMode.inject, RunMode.replay}:
+        registry = ProviderRegistry(settings)
+        available = {provider.id: provider for provider in registry.list_providers()}
+        if payload.provider not in available:
+            raise HTTPException(status_code=400, detail="Requested provider is not configured")
+
+    model = payload.model or ProviderRegistry(settings).default_model(payload.provider)
     run = repository.create_run(payload, model=model)
     orchestrator = HarnessOrchestrator(settings, repository)
     background_tasks.add_task(orchestrator.execute, run.id, payload)
