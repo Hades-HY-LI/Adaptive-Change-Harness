@@ -31,6 +31,7 @@ artifacts/
 
 # Local demo archives
 output-playwright-probe-target.zip
+demo-video-script.md
 
 # Product-generated runtime skill assets
 skill_assets/indexes/
