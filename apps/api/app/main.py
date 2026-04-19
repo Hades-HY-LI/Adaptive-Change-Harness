@@ -11,6 +11,7 @@ from app.dependencies import get_repository
 def create_app() -> FastAPI:
     settings = get_settings()
     settings.artifact_root.mkdir(parents=True, exist_ok=True)
+    settings.skill_assets_root.mkdir(parents=True, exist_ok=True)
     get_repository()
 
     app = FastAPI(title=settings.app_name)

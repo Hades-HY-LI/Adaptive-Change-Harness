@@ -9,11 +9,17 @@
 - Evaluator: deterministic check that passes or fails
 - Evidence Packet: final artifact bundle proving why a run is safe or unsafe
 - Verdict: `safe`, `unsafe`, or `needs_review`
+- Repo Profile: detected metadata about an ingested repo
+- Failure Case: a reproducible discovered failure with exact repro steps
+- Repair Skill: a reusable bug-repair asset created or updated from validated cases
+- Skill Assets: the persistent store of product-generated repair skills under `skill_assets/`
 
 ### Scope Rules
 - V1 break classes are limited to logic regression, contract violation, and invariant violation.
 - Architecture critique and system-design critique are advisory only in V1.
 - Every new feature proposal must map back to one of the required hackathon tracks.
+- V2 should stay focused on Python service repos with runnable tests or clear entrypoints.
+- The evolving skill system must strengthen discovery, repair, and replay; it must not turn the product into a generic agent platform.
 
 ## Backend Conventions
 
@@ -30,6 +36,8 @@
 - `providers/`: OpenAI and Anthropic adapters
 - `evaluators/`: deterministic checks only
 - `storage/`: DB and artifact persistence only
+- `skill_assets/`: persistent product-generated repair skills and revisions
+- `skills/`: repo-local Codex/operator skills only; do not mix product-generated repair skills into this directory
 
 ### Error Handling
 - Never swallow shell or provider errors
@@ -41,6 +49,7 @@
 - Store the raw model output before normalization
 - Store pre-patch and post-patch file snapshots
 - Never mark a patch safe if deterministic evaluators still fail
+- Never promote a repair into a reusable skill unless deterministic validation passes after the patch
 
 ### Shell Execution
 - All commands must have:
@@ -50,6 +59,7 @@
   - exit code recording
 - Prefer subprocess wrappers over inline shell strings where possible
 - No destructive commands outside the temp workspace
+- Discovery probes and generated tests must run inside isolated workspaces only
 
 ## API Conventions
 
@@ -72,6 +82,13 @@
   - `patch_applied`
   - `evaluation_passed`
   - `verdict_ready`
+- V2 should add explicit events for:
+  - `codebase_profiled`
+  - `discovery_started`
+  - `failure_case_captured`
+  - `skill_matched`
+  - `skill_created`
+  - `skill_updated`
 
 ## Frontend Conventions
 
@@ -95,6 +112,7 @@ Avoid:
 - purple gradients on white backgrounds
 - empty marketing-style hero pages
 - soft, low-information dashboards
+- hiding skill reuse or skill creation in secondary settings panels
 
 ### Typography
 - Headings: Space Grotesk
@@ -143,12 +161,22 @@ Avoid:
 - Always include the exact failing signals in the repair request
 - Capture model name, provider, and prompt version on every run
 
+### Skill Rules
+- A repair skill must be stored as structured data plus concise executable guidance, not as an opaque text blob only.
+- Skill matching should use explicit bug signals and failure metadata first; semantic similarity may assist but should not be the sole decision path.
+- Every skill update must create a new revision with lineage to the triggering failure case.
+- If a matched skill was helpful but insufficient, update that skill instead of silently bypassing it.
+- If no existing skill adequately matches, create a new skill after a validated fix.
+- Generated tests or evaluators may inform a repair, but they must be materialized and rerun deterministically before they can affect verdicts or skill promotion.
+
 ## Testing Conventions
 
 ### Backend
 - Unit test each evaluator
 - Unit test provider response normalization
 - Integration test the full run flow against a fake provider before relying on live models
+- Unit test skill matching, skill creation, and skill revision logic
+- Integration test discover -> repair -> learn -> replay flows against a fake provider before relying on live models
 
 ### Frontend
 - Component tests for status rendering and evidence cards

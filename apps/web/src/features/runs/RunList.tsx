@@ -33,7 +33,16 @@ export function RunList({ runs, selectedRunId, onSelect }: RunListProps) {
                 <span className={`status-pill status-${run.status}`}>{run.status}</span>
                 <span className={`verdict-pill verdict-${run.verdict ?? 'needs_review'}`}>{run.verdict ?? 'pending'}</span>
               </div>
-              <strong>{run.break_type.replace(/_/g, ' ')}</strong>
+              <strong>{run.mode === 'inject' ? (run.break_type ?? 'inject').replace(/_/g, ' ') : run.mode}</strong>
+              <span className="run-card-meta">
+                {run.mode === 'discover'
+                  ? run.codebase_id
+                    ? `codebase ${run.codebase_id.slice(0, 8)}`
+                    : 'awaiting codebase'
+                  : run.failure_case_id
+                    ? `failure ${run.failure_case_id.slice(0, 8)}`
+                    : 'demo workspace'}
+              </span>
               <span>{new Date(run.created_at).toLocaleString()}</span>
             </button>
           ))
