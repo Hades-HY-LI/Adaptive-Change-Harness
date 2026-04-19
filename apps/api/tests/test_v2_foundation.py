@@ -168,6 +168,50 @@ def test_list_providers_includes_fake_and_openai_when_enabled(client: TestClient
     }
 
 
+def test_failure_case_repair_prompt_skips_directory_context_entries(tmp_path: Path) -> None:
+    from app.models.schemas import EvaluatorResult, FailureCase, RepoProfile, SourceType
+    from app.services.prompts import build_failure_case_repair_prompt
+
+    workspace = tmp_path / "workspace"
+    app_dir = workspace / "app"
+    service_file = app_dir / "services" / "pricing.py"
+    service_file.parent.mkdir(parents=True, exist_ok=True)
+    service_file.write_text("def build_quote(request):\n    return {'total_cents': -1}\n")
+
+    failure_case = FailureCase(
+        id="failure-1",
+        created_at="2026-04-19T08:00:00Z",
+        codebase_id="codebase-1",
+        failure_type="negative_total_quote",
+        title="Negative total quote probe",
+        failing_command="python .harness/probes/negative_total_quote_probe.py",
+        failing_output="negative total detected",
+        reproduction_steps=["python .harness/probes/negative_total_quote_probe.py"],
+        suspect_files=["app", "app/services/pricing.py"],
+        deterministic_check_ids=["negative_total_quote"],
+    )
+    repo_profile = RepoProfile(
+        id="codebase-1",
+        source_type=SourceType.zip_upload,
+        workspace_path=str(workspace),
+        language="python",
+        framework="fastapi",
+        source_dirs=["app"],
+        entrypoints=["app/main.py"],
+    )
+    repro_result = EvaluatorResult(
+        name="saved_repro",
+        passed=False,
+        summary="Saved failure case reproduced successfully.",
+        details="negative total detected",
+    )
+
+    prompt = build_failure_case_repair_prompt(workspace, failure_case, repo_profile, repro_result)
+
+    assert "FILE: app\n```python" not in prompt
+    assert "FILE: app/services/pricing.py" in prompt
+
+
 def test_failure_case_repair_uses_saved_repro_and_creates_skill_asset(
     client: TestClient,
     tmp_path: Path,

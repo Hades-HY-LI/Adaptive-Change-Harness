@@ -48,7 +48,7 @@ def build_failure_case_repair_prompt(
     context_sections: list[str] = []
     for file_path in _collect_context_files(failure_case, repo_profile):
         target = workspace / file_path
-        if not target.exists():
+        if not target.exists() or not target.is_file():
             continue
         context_sections.append(f"FILE: {file_path}\n```python\n{target.read_text()}\n```")
 
